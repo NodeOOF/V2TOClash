@@ -11,7 +11,7 @@
 ## 📸 محیط برنامه
 
 <div align="center">
-  <img src="PNG/welcome_page.png" alt="محیط V2Ray به FlClash Converter" width="100%">
+  <img src="PNG/Preview.png" alt="محیط V2Ray به FlClash Converter" width="100%">
 </div>
 
 ---
