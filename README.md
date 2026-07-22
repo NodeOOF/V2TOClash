@@ -31,17 +31,17 @@
 ## 🚀 شروع سریع
 
 ### روش ۱: اجرای مستقیم
-فایل `V2TOClash.html` را در مرورگر باز کنید:
+فایل `index.html` را در مرورگر باز کنید:
 
 ```bash
 # ویندوز
-start V2TOClash.html
+start index.html
 
 # مک
-open V2TOClash.html
+open index.html
 
 # لینوکس
-xdg-open V2TOClash.html
+xdg-open index.html
 ```
 
 ### روش ۲: سرور محلی (اختیاری)
@@ -50,7 +50,7 @@ xdg-open V2TOClash.html
 python -m http.server 8000
 
 # سپس مرورگر را باز کنید
-# http://localhost:8000/V2TOClash.html
+# http://localhost:8000/index.html
 ```
 
 ---
@@ -80,7 +80,7 @@ python -m http.server 8000
 
 ```
 HTML/
-├── V2TOClash.html   # فایل اصلی (SPA)
+├── index.html   # فایل اصلی (SPA)
 ├── screenshot.png                 # اسکرین‌شات محیط برنامه
 └── README.md                     # مستندات
 ```
