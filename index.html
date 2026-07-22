@@ -560,6 +560,11 @@
             <span>سایت‌های ایرانی (.ir) به صورت خودکار مستقیم (DIRECT) می‌شوند</span>
         </div>
 
+        <div class="feature-note" style="background:#f0fff4;border-color:#c6f6d5;color:#22543d;">
+            <span class="icon">🔄</span>
+            <span>پروکسی‌های تکراری (بر اساس نام) به صورت خودکار تغییر نام داده می‌شوند</span>
+        </div>
+
         <div id="statusMessage" class="status-message"></div>
 
         <div class="input-methods">
@@ -932,6 +937,28 @@
             return proxy;
         }
 
+        // ============ Remove Duplicates ============
+        function removeDuplicates(proxies) {
+            const nameCount = {};
+            const renamedProxies = [];
+            const changes = [];
+
+            proxies.forEach(proxy => {
+                const baseName = proxy.name;
+                if (!nameCount[baseName]) {
+                    nameCount[baseName] = 1;
+                    renamedProxies.push(proxy);
+                } else {
+                    nameCount[baseName]++;
+                    const newName = `${baseName} (${nameCount[baseName]})`;
+                    changes.push({ old: baseName, new: newName });
+                    renamedProxies.push({ ...proxy, name: newName });
+                }
+            });
+
+            return { proxies: renamedProxies, changes };
+        }
+
         // ============ Generate Config ============
         function generateClashConfig(proxies) {
             const proxyNames = proxies.map(p => p.name).filter(Boolean);
@@ -1022,18 +1049,19 @@
                         return;
                     }
 
-                    parsedProxies = proxies;
-                    currentConfig = generateClashConfig(proxies);
+                    const { proxies: dedupedProxies, changes } = removeDuplicates(proxies);
+                    parsedProxies = dedupedProxies;
+                    currentConfig = generateClashConfig(dedupedProxies);
 
                     const resultSection = document.getElementById('resultSection');
                     resultSection.classList.add('show');
 
-                    document.getElementById('proxyCount').textContent = `${proxies.length} پروکسی`;
+                    document.getElementById('proxyCount').textContent = `${dedupedProxies.length} پروکسی`;
 
-                    updateStats(proxies);
+                    updateStats(dedupedProxies);
 
                     const proxyList = document.getElementById('proxyList');
-                    proxyList.innerHTML = proxies.map((proxy, index) => {
+                    proxyList.innerHTML = dedupedProxies.map((proxy, index) => {
                         return `
                             <div class="proxy-item">
                                 <span>${index + 1}. ${proxy.name}</span>
@@ -1050,7 +1078,12 @@
 
                     saveToLocalStorage();
                     hideLoading();
-                    showMessage(`✅ ${proxies.length} پروکسی با موفقیت پیدا شد`, 'success');
+
+                    let message = `✅ ${dedupedProxies.length} پروکسی با موفقیت پیدا شد`;
+                    if (changes.length > 0) {
+                        message += ` | ${changes.length} تکراری تغییر نام یافت`;
+                    }
+                    showMessage(message, 'success');
 
                 } catch (error) {
                     hideLoading();
