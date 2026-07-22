@@ -146,6 +146,11 @@
             background: #f7fafc;
         }
 
+        .file-upload-wrapper.drag-over {
+            border-color: #667eea;
+            background: #ebf8ff;
+        }
+
         .file-upload-wrapper .icon {
             font-size: 30px;
             display: block;
@@ -175,6 +180,32 @@
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
+        }
+
+        .btn-clear {
+            background: #e53e3e !important;
+            margin-top: 5px !important;
+        }
+
+        .btn-clear:hover {
+            background: #c53030 !important;
+            box-shadow: 0 8px 25px rgba(229, 62, 62, 0.4) !important;
+        }
+
+        .btn-json {
+            background: #805ad5 !important;
+            margin-top: 10px !important;
+        }
+
+        .btn-json:hover {
+            background: #6b46c1 !important;
+            box-shadow: 0 8px 25px rgba(128, 90, 213, 0.4) !important;
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
         }
 
         .result-section {
@@ -207,6 +238,32 @@
             border-radius: 20px;
             font-size: 12px;
             font-weight: 600;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .stat-item {
+            background: #f7fafc;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+
+        .stat-item .number {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .stat-item .label {
+            font-size: 12px;
+            color: #718096;
         }
 
         .proxy-list {
@@ -358,6 +415,68 @@
             font-size: 18px;
         }
 
+        /* Loading Overlay */
+        #loadingOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+
+        #loadingOverlay.show {
+            display: flex;
+        }
+
+        .loading-box {
+            background: white;
+            padding: 40px 50px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .loader {
+            border: 4px solid #e2e8f0;
+            border-radius: 50%;
+            border-top: 4px solid #667eea;
+            width: 50px;
+            height: 50px;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .keyboard-shortcuts {
+            font-size: 12px;
+            color: #718096;
+            text-align: center;
+            margin-top: 15px;
+            padding: 10px;
+            background: #f7fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .keyboard-shortcuts kbd {
+            background: #2d3748;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-family: monospace;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 20px;
@@ -368,6 +487,14 @@
             }
 
             .button-group {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .btn-group {
                 grid-template-columns: 1fr;
             }
         }
@@ -392,6 +519,15 @@
     </style>
 </head>
 <body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay">
+        <div class="loading-box">
+            <div class="loader"></div>
+            <p style="color:#2d3748;font-weight:600;">در حال پردازش کانفیگ...</p>
+            <p style="color:#718096;font-size:14px;margin-top:5px;">لطفاً چند لحظه صبر کنید</p>
+        </div>
+    </div>
+
     <div class="container">
         <div class="header">
             <h1>🔄 V2Ray به FlClash</h1>
@@ -420,21 +556,28 @@
 
         <div id="textInputSection" class="input-section">
             <label for="configInput">کانفیگ خود را وارد کنید:</label>
-            <textarea id="configInput" placeholder="لینک‌های V2Ray، Trojan، VLess یا کانفیگ JSON را وارد کنید..."></textarea>
+            <textarea id="configInput" placeholder="لینک‌های V2Ray، Trojan، VLess یا کانفیگ JSON را وارد کنید...&#10;&#10;💡 میانبر: Ctrl+Enter برای تبدیل"></textarea>
         </div>
 
         <div id="fileInputSection" class="input-section" style="display:none;">
             <label>بارگذاری فایل کانفیگ:</label>
-            <div class="file-upload-wrapper" onclick="document.getElementById('fileInput').click()">
+            <div class="file-upload-wrapper"
+                 onclick="document.getElementById('fileInput').click()"
+                 ondragover="handleDragOver(event)"
+                 ondragleave="handleDragLeave(event)"
+                 ondrop="handleDrop(event)">
                 <span class="icon">📤</span>
-                <div>برای انتخاب فایل کلیک کنید</div>
+                <div>برای انتخاب فایل کلیک کنید یا فایل را بکشید و رها کنید</div>
                 <div style="font-size:12px;color:#718096;margin-top:8px;">پشتیبانی از فایل‌های JSON و TXT</div>
             </div>
             <input type="file" id="fileInput" class="file-upload" accept=".json,.txt,.conf" onchange="handleFileUpload(event)">
             <div id="fileName" style="margin-top:10px;font-size:14px;color:#2d3748;"></div>
         </div>
 
-        <button class="btn" onclick="convertConfig()">🔄 تبدیل کانفیگ</button>
+        <div class="btn-group">
+            <button class="btn" onclick="convertConfig()">🔄 تبدیل کانفیگ</button>
+            <button class="btn btn-clear" onclick="clearAll()">🗑️ پاک کردن همه</button>
+        </div>
 
         <div id="resultSection" class="result-section">
             <div class="result-header">
@@ -442,15 +585,42 @@
                 <span class="badge" id="proxyCount">۰ پروکسی</span>
             </div>
 
+            <!-- آمار -->
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="number" id="statTotal">0</div>
+                    <div class="label">مجموع</div>
+                </div>
+                <div class="stat-item">
+                    <div class="number" id="statVless">0</div>
+                    <div class="label">VLess</div>
+                </div>
+                <div class="stat-item">
+                    <div class="number" id="statVmess">0</div>
+                    <div class="label">VMess</div>
+                </div>
+                <div class="stat-item">
+                    <div class="number" id="statTrojan">0</div>
+                    <div class="label">Trojan</div>
+                </div>
+            </div>
+
             <div id="proxyList" class="proxy-list"></div>
 
             <div class="button-group">
                 <button class="btn btn-download" onclick="downloadConfig()">📥 دانلود YAML</button>
-                <button class="btn btn-copy" onclick="copyConfig()">📋 کپی</button>
+                <button class="btn btn-copy" onclick="copyConfig()">📋 کپی YAML</button>
+                <button class="btn btn-json" onclick="copyAsJson()">📋 کپی JSON</button>
                 <button class="btn btn-preview" onclick="togglePreview()">👁️ پیش‌نمایش</button>
             </div>
 
             <div id="configPreview" class="config-preview"></div>
+        </div>
+
+        <div class="keyboard-shortcuts">
+            <kbd>Ctrl</kbd> + <kbd>Enter</kbd> تبدیل &nbsp;|&nbsp;
+            <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>D</kbd> دانلود &nbsp;|&nbsp;
+            <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd> کپی
         </div>
     </div>
 
@@ -460,7 +630,6 @@
         let parsedProxies = [];
         let showPreview = false;
 
-        // تنظیمات YAML
         const yamlOptions = {
             indent: 2,
             lineWidth: -1,
@@ -468,6 +637,62 @@
             sortKeys: false
         };
 
+        // ============ LocalStorage ============
+        function saveToLocalStorage() {
+            const text = document.getElementById('configInput').value;
+            if (text) localStorage.setItem('v2fl_config', text);
+        }
+
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('v2fl_config');
+            if (saved) document.getElementById('configInput').value = saved;
+        }
+
+        // ============ Loading Overlay ============
+        function showLoading() {
+            document.getElementById('loadingOverlay').classList.add('show');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.remove('show');
+        }
+
+        // ============ Status Messages ============
+        function showMessage(text, type = 'info') {
+            const msg = document.getElementById('statusMessage');
+            msg.textContent = text;
+            msg.className = `status-message show ${type}`;
+            setTimeout(() => {
+                msg.classList.remove('show');
+            }, 5000);
+        }
+
+        function showError(message, detail = '') {
+            const msg = document.getElementById('statusMessage');
+            msg.innerHTML = `<strong>❌ ${message}</strong>${detail ? '<br><small>' + detail + '</small>' : ''}`;
+            msg.className = 'status-message show error';
+            setTimeout(() => msg.classList.remove('show'), 7000);
+        }
+
+        function hideMessage() {
+            document.getElementById('statusMessage').className = 'status-message';
+        }
+
+        // ============ Clear All ============
+        function clearAll() {
+            document.getElementById('configInput').value = '';
+            document.getElementById('resultSection').classList.remove('show');
+            document.getElementById('configPreview').classList.remove('show');
+            document.getElementById('fileName').textContent = '';
+            document.getElementById('fileInput').value = '';
+            currentConfig = null;
+            parsedProxies = [];
+            showPreview = false;
+            localStorage.removeItem('v2fl_config');
+            showMessage('✅ همه چیز پاک شد', 'info');
+        }
+
+        // ============ Switch Method ============
         function switchMethod(method) {
             currentMethod = method;
             document.querySelectorAll('.method-card').forEach(card => card.classList.remove('active'));
@@ -482,6 +707,7 @@
             hideMessage();
         }
 
+        // ============ File Upload ============
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (file) {
@@ -489,25 +715,40 @@
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     document.getElementById('configInput').value = e.target.result;
-                    showMessage('فایل با موفقیت بارگذاری شد', 'success');
+                    saveToLocalStorage();
+                    showMessage('✅ فایل با موفقیت بارگذاری شد', 'success');
                 };
                 reader.readAsText(file);
             }
         }
 
-        function showMessage(text, type = 'info') {
-            const msg = document.getElementById('statusMessage');
-            msg.textContent = text;
-            msg.className = `status-message show ${type}`;
-            setTimeout(() => {
-                msg.classList.remove('show');
-            }, 5000);
+        function handleDragOver(event) {
+            event.preventDefault();
+            document.querySelector('.file-upload-wrapper').classList.add('drag-over');
         }
 
-        function hideMessage() {
-            document.getElementById('statusMessage').className = 'status-message';
+        function handleDragLeave(event) {
+            event.preventDefault();
+            document.querySelector('.file-upload-wrapper').classList.remove('drag-over');
         }
 
+        function handleDrop(event) {
+            event.preventDefault();
+            document.querySelector('.file-upload-wrapper').classList.remove('drag-over');
+            const file = event.dataTransfer.files[0];
+            if (file) {
+                document.getElementById('fileName').textContent = `📎 ${file.name}`;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.getElementById('configInput').value = e.target.result;
+                    saveToLocalStorage();
+                    showMessage('✅ فایل با Drag & Drop بارگذاری شد', 'success');
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        // ============ Parsers ============
         function parseVlessLink(link) {
             try {
                 if (!link.startsWith('vless://')) return null;
@@ -676,6 +917,7 @@
             return proxy;
         }
 
+        // ============ Generate Config ============
         function generateClashConfig(proxies) {
             const proxyNames = proxies.map(p => p.name).filter(Boolean);
 
@@ -722,10 +964,8 @@
                     }
                 ],
                 rules: [
-                    // سایت‌های ایرانی مستقیماً متصل می‌شوند
                     'DOMAIN-SUFFIX,ir,DIRECT',
                     'GEOIP,IR,DIRECT',
-                    // بقیه ترافیک از Auto-Fallback
                     'MATCH,Auto-Fallback'
                 ]
             };
@@ -733,103 +973,157 @@
             return config;
         }
 
+        // ============ Update Stats ============
+        function updateStats(proxies) {
+            const total = proxies.length;
+            const vless = proxies.filter(p => p.type === 'vless').length;
+            const vmess = proxies.filter(p => p.type === 'vmess').length;
+            const trojan = proxies.filter(p => p.type === 'trojan').length;
+
+            document.getElementById('statTotal').textContent = total;
+            document.getElementById('statVless').textContent = vless;
+            document.getElementById('statVmess').textContent = vmess;
+            document.getElementById('statTrojan').textContent = trojan;
+        }
+
+        // ============ Convert ============
         function convertConfig() {
             const text = document.getElementById('configInput').value.trim();
 
             if (!text) {
-                showMessage('لطفاً کانفیگ خود را وارد کنید', 'error');
+                showError('لطفاً کانفیگ خود را وارد کنید');
                 return;
             }
 
-            const proxies = parseConfigFile(text);
+            showLoading();
 
-            if (proxies.length === 0) {
-                showMessage('هیچ پروکسی معتبری پیدا نشد!', 'error');
-                return;
-            }
+            // استفاده از setTimeout برای نمایش لودینگ
+            setTimeout(() => {
+                try {
+                    const proxies = parseConfigFile(text);
 
-            parsedProxies = proxies;
-            currentConfig = generateClashConfig(proxies);
+                    if (proxies.length === 0) {
+                        hideLoading();
+                        showError('هیچ پروکسی معتبری پیدا نشد!', 'لطفاً فرمت لینک‌ها را بررسی کنید');
+                        return;
+                    }
 
-            const resultSection = document.getElementById('resultSection');
-            resultSection.classList.add('show');
+                    parsedProxies = proxies;
+                    currentConfig = generateClashConfig(proxies);
 
-            document.getElementById('proxyCount').textContent = `${proxies.length} پروکسی`;
+                    const resultSection = document.getElementById('resultSection');
+                    resultSection.classList.add('show');
 
-            const proxyList = document.getElementById('proxyList');
-            proxyList.innerHTML = proxies.map((proxy, index) => {
-                const name = document.createElement('span');
-                name.textContent = `${index + 1}. ${proxy.name}`;
+                    document.getElementById('proxyCount').textContent = `${proxies.length} پروکسی`;
 
-                const typeBadge = document.createElement('span');
-                typeBadge.className = `type-badge type-${proxy.type}`;
-                typeBadge.textContent = proxy.type.toUpperCase();
+                    // آمار
+                    updateStats(proxies);
 
-                const serverInfo = document.createElement('span');
-                serverInfo.textContent = `${proxy.server}:${proxy.port}`;
+                    // لیست پروکسی‌ها
+                    const proxyList = document.getElementById('proxyList');
+                    proxyList.innerHTML = proxies.map((proxy, index) => {
+                        return `
+                            <div class="proxy-item">
+                                <span>${index + 1}. ${proxy.name}</span>
+                                <span>
+                                    <span class="type-badge type-${proxy.type}">${proxy.type.toUpperCase()}</span>
+                                    ${proxy.server}:${proxy.port}
+                                </span>
+                            </div>
+                        `;
+                    }).join('');
 
-                const rightSpan = document.createElement('span');
-                rightSpan.appendChild(typeBadge);
-                rightSpan.appendChild(document.createTextNode(' '));
-                rightSpan.appendChild(serverInfo);
+                    document.getElementById('configPreview').classList.remove('show');
+                    showPreview = false;
 
-                const item = document.createElement('div');
-                item.className = 'proxy-item';
-                item.appendChild(name);
-                item.appendChild(rightSpan);
+                    saveToLocalStorage();
+                    hideLoading();
+                    showMessage(`✅ ${proxies.length} پروکسی با موفقیت پیدا شد`, 'success');
 
-                return item.outerHTML;
-            }).join('');
-
-            showMessage(`✅ ${proxies.length} پروکسی با موفقیت پیدا شد`, 'success');
-
-            document.getElementById('configPreview').classList.remove('show');
-            showPreview = false;
+                } catch (error) {
+                    hideLoading();
+                    showError('خطا در پردازش کانفیگ', error.message);
+                }
+            }, 300);
         }
 
+        // ============ Download ============
         function downloadConfig() {
             if (!currentConfig) {
-                showMessage('لطفاً ابتدا کانفیگ را تبدیل کنید', 'error');
+                showError('لطفاً ابتدا کانفیگ را تبدیل کنید');
                 return;
             }
 
-            const yamlContent = jsyaml.dump(currentConfig, yamlOptions);
-
-            const blob = new Blob([yamlContent], { type: 'text/yaml' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'clash_config.yaml';
-            a.click();
-            URL.revokeObjectURL(url);
-
-            showMessage('✅ فایل با موفقیت دانلود شد', 'success');
+            try {
+                const yamlContent = jsyaml.dump(currentConfig, yamlOptions);
+                const blob = new Blob([yamlContent], { type: 'text/yaml' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'clash_config.yaml';
+                a.click();
+                URL.revokeObjectURL(url);
+                showMessage('✅ فایل با موفقیت دانلود شد', 'success');
+            } catch (error) {
+                showError('خطا در دانلود فایل', error.message);
+            }
         }
 
+        // ============ Copy ============
         function copyConfig() {
             if (!currentConfig) {
-                showMessage('لطفاً ابتدا کانفیگ را تبدیل کنید', 'error');
+                showError('لطفاً ابتدا کانفیگ را تبدیل کنید');
                 return;
             }
 
-            const yamlContent = jsyaml.dump(currentConfig, yamlOptions);
+            try {
+                const yamlContent = jsyaml.dump(currentConfig, yamlOptions);
 
-            navigator.clipboard.writeText(yamlContent).then(() => {
-                showMessage('✅ کانفیگ در کلیپ‌بورد کپی شد', 'success');
-            }).catch(() => {
-                const textarea = document.createElement('textarea');
-                textarea.value = yamlContent;
-                document.body.appendChild(textarea);
-                textarea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textarea);
-                showMessage('✅ کانفیگ در کلیپ‌بورد کپی شد', 'success');
-            });
+                navigator.clipboard.writeText(yamlContent).then(() => {
+                    showMessage('✅ کانفیگ YAML در کلیپ‌بورد کپی شد', 'success');
+                }).catch(() => {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = yamlContent;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    showMessage('✅ کانفیگ YAML در کلیپ‌بورد کپی شد', 'success');
+                });
+            } catch (error) {
+                showError('خطا در کپی کردن', error.message);
+            }
         }
 
+        function copyAsJson() {
+            if (!currentConfig) {
+                showError('لطفاً ابتدا کانفیگ را تبدیل کنید');
+                return;
+            }
+
+            try {
+                const jsonContent = JSON.stringify(currentConfig, null, 2);
+
+                navigator.clipboard.writeText(jsonContent).then(() => {
+                    showMessage('✅ کانفیگ JSON در کلیپ‌بورد کپی شد', 'success');
+                }).catch(() => {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = jsonContent;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    showMessage('✅ کانفیگ JSON در کلیپ‌بورد کپی شد', 'success');
+                });
+            } catch (error) {
+                showError('خطا در کپی کردن JSON', error.message);
+            }
+        }
+
+        // ============ Preview ============
         function togglePreview() {
             if (!currentConfig) {
-                showMessage('لطفاً ابتدا کانفیگ را تبدیل کنید', 'error');
+                showError('لطفاً ابتدا کانفیگ را تبدیل کنید');
                 return;
             }
 
@@ -838,26 +1132,59 @@
                 preview.classList.remove('show');
                 showPreview = false;
             } else {
-                const yamlContent = jsyaml.dump(currentConfig, yamlOptions);
-                preview.textContent = yamlContent;
-                preview.classList.add('show');
-                showPreview = true;
+                try {
+                    const yamlContent = jsyaml.dump(currentConfig, yamlOptions);
+                    preview.textContent = yamlContent;
+                    preview.classList.add('show');
+                    showPreview = true;
+                } catch (error) {
+                    showError('خطا در نمایش پیش‌نمایش', error.message);
+                }
             }
         }
 
+        // ============ Keyboard Shortcuts ============
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+Enter = Convert
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                convertConfig();
+            }
+            // Ctrl+Shift+D = Download
+            if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+                e.preventDefault();
+                downloadConfig();
+            }
+            // Ctrl+Shift+C = Copy
+            if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+                e.preventDefault();
+                copyConfig();
+            }
+        });
+
+        // ============ Auto Save ============
+        document.getElementById('configInput').addEventListener('input', saveToLocalStorage);
+
+        // ============ Load YAML Library ============
         function loadYamlLibrary() {
             const script = document.createElement('script');
             script.src = 'https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js';
             script.onload = function() {
-                console.log('js-yaml loaded');
+                console.log('📦 js-yaml loaded');
             };
             script.onerror = function() {
-                showMessage('خطا در بارگذاری کتابخانه YAML', 'error');
+                showError('خطا در بارگذاری کتابخانه YAML', 'لطفاً اتصال اینترنت را بررسی کنید');
             };
             document.head.appendChild(script);
         }
 
-        loadYamlLibrary();
+        // ============ Init ============
+        window.onload = function() {
+            loadFromLocalStorage();
+            loadYamlLibrary();
+            console.log('🚀 V2TOClash loaded successfully');
+            console.log('💡 Shortcuts: Ctrl+Enter=Convert, Ctrl+Shift+D=Download, Ctrl+Shift+C=Copy');
+        };
     </script>
 </body>
 </html>
