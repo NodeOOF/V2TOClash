@@ -1,6 +1,6 @@
 # V2Ray به FlClash Converter
 
-تبدیل‌کننده آنلاین کانفیگ‌های V2Ray، Trojan و VLess به فرمت FlClash با قابلیت مسیریابی خودکار ترافیک ایران
+تبدیل‌کننده آنلاین کانفیگ‌های V2Ray، Trojan، VLess و Shadowsocks به فرمت FlClash با قابلیت مسیریابی خودکار ترافیک ایران
 
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
 ![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)
@@ -18,10 +18,11 @@
 
 ## ✨ ویژگی‌ها
 
-- **پشتیبانی از پروتکل‌ها**: VMess, VLess, Trojan
+- **پشتیبانی از پروتکل‌ها**: VMess, VLess, Trojan, Shadowsocks
 - **ورودی چندگانه**: لینک مستقیم، متن کانفیگ، یا بارگذاری فایل
 - **خروجی استاندارد**: تولید فایل YAML سازگار با FlClash و Clash
 - **مسیریابی خودکار**: سایت‌های ایرانی (.ir) به صورت خودکار مستقیم (DIRECT) می‌شوند
+- **حذف خودکار تکراری‌ها**: پروکسی‌های تکراری (بر اساس نام) به صورت خودکار تغییر نام داده می‌شوند
 - **پیش‌نمایش**: مشاهده کانفیگ تولید شده قبل از دانلود
 - **رابط کاربری فارسی**: طراحی کاملاً راست‌چین با پشتیبانی RTL
 - **واکنش‌گرا**: سازگار با تمام اندازه صفحه‌نمایش
@@ -64,6 +65,7 @@ python -m http.server 8000
 | لینک VLess | `vless://...` | `vless://uuid@server:port?...` |
 | لینک VMess | `vmess://...` (Base64) | `vmess://eyJhZGQiOi...` |
 | لینک Trojan | `trojan://...` | `trojan://password@server:port?...` |
+| لینک SS | `ss://...` | `ss://base64(method:password)@server:port#name` |
 | JSON کانفیگ | V2Ray JSON config | `{"outbounds": [...]}` |
 | فایل | `.json`, `.txt`, `.conf` | - |
 
@@ -79,10 +81,10 @@ python -m http.server 8000
 ## 🏗️ معماری پروژه
 
 ```
-HTML/
+V2TOClash/
 ├── index.html   # فایل اصلی (SPA)
-├── screenshot.png                 # اسکرین‌شات محیط برنامه
-└── README.md                     # مستندات
+├── PNG/         # اسکرین‌شات‌ها
+└── README.md    # مستندات
 ```
 
 ### مؤلفه‌های اصلی
@@ -92,8 +94,10 @@ HTML/
 | `parseVlessLink()` | پارس لینک‌های VLess |
 | `parseVmessLink()` | پارس لینک‌های VMess (Base64) |
 | `parseTrojanLink()` | پارس لینک‌های Trojan |
+| `parseSSLink()` | پارس لینک‌های Shadowsocks |
 | `parseConfigFile()` | پردازش JSON و لینک‌های مختلط |
 | `convertOutboundToProxy()` | تبدیل outbounds V2Ray به فرمت Clash |
+| `removeDuplicates()` | حذف و تغییر نام پروکسی‌های تکراری |
 | `generateClashConfig()` | تولید کانفیگ نهایی YAML |
 
 ---
@@ -171,6 +175,11 @@ rules:
 - TLS اجباری
 - شبکه: tcp, ws
 
+### Shadowsocks
+- رمز عبور
+- رمزنگاری:aes-256-gcm, chacha20-ietf-poly1305
+- UDP
+
 ---
 
 ## 📱 سازگاری
@@ -234,7 +243,7 @@ dns: {
 بله. فرمت JSON با ساختار `outbounds` پشتیبانی می‌شود.
 
 ### چرا برخی کانفیگ‌ها پردازش نمی‌شوند؟
-ممکن است فرمت لینک استاندارد نباشد. مطمئن شوید لینک با `vless://`، `vmess://` یا `trojan://` شروع می‌شود.
+ممکن است فرمت لینک استاندارد نباشد. مطمئن شوید لینک با `vless://`، `vmess://`، `trojan://` یا `ss://` شروع می‌شود.
 
 ### آیا می‌توانم خروجی را در Clash اندروید استفاده کنم؟
 بله. فایل YAML تولید شده با Clash، Clash Meta، و FlClash سازگار است.

@@ -190,7 +190,6 @@
 
         .btn-clear {
             background: #e53e3e !important;
-            margin-top: 5px !important;
         }
 
         .btn-clear:hover {
@@ -238,7 +237,7 @@
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             gap: 10px;
             margin: 15px 0;
         }
@@ -422,23 +421,6 @@
             display: block;
         }
 
-        .feature-note {
-            background: #ebf8ff;
-            border: 1px solid #bee3f8;
-            border-radius: 8px;
-            padding: 10px 15px;
-            margin-bottom: 15px;
-            font-size: 13px;
-            color: #2a69ac;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .feature-note .icon {
-            font-size: 18px;
-        }
-
         /* Loading Overlay */
         #loadingOverlay {
             display: none;
@@ -479,15 +461,6 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
-        }
-
-        .keyboard-shortcuts kbd {
-            background: #2d3748;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-family: monospace;
         }
 
         @media (max-width: 768px) {
@@ -552,17 +525,7 @@
     <div class="container">
         <div class="header">
             <h1>🔄 V2Ray به FlClash</h1>
-            <p>تبدیل کانفیگ‌های V2Ray، Trojan، VLess به فرمت FlClash</p>
-        </div>
-
-        <div class="feature-note">
-            <span class="icon">🇮🇷</span>
-            <span>سایت‌های ایرانی (.ir) به صورت خودکار مستقیم (DIRECT) می‌شوند</span>
-        </div>
-
-        <div class="feature-note" style="background:#f0fff4;border-color:#c6f6d5;color:#22543d;">
-            <span class="icon">🔄</span>
-            <span>پروکسی‌های تکراری (بر اساس نام) به صورت خودکار تغییر نام داده می‌شوند</span>
+            <p>تبدیل کانفیگ‌های V2Ray، Trojan، VLess، Shadowsocks به فرمت FlClash</p>
         </div>
 
         <div id="statusMessage" class="status-message"></div>
@@ -582,7 +545,7 @@
 
         <div id="textInputSection" class="input-section">
             <label for="configInput">کانفیگ خود را وارد کنید:</label>
-            <textarea id="configInput" placeholder="لینک‌های V2Ray، Trojan، VLess یا کانفیگ JSON را وارد کنید...&#10;&#10;💡 میانبر: Ctrl+Enter برای تبدیل"></textarea>
+            <textarea id="configInput" placeholder="کانفیگ های V2Ray، Trojan،Shadowsocks، VLess یا کانفیگ JSON را وارد کنید...&#10;&#10; "></textarea>
         </div>
 
         <div id="fileInputSection" class="input-section" style="display:none;">
@@ -629,6 +592,10 @@
                     <div class="number" id="statTrojan">0</div>
                     <div class="label">Trojan</div>
                 </div>
+                <div class="stat-item">
+                    <div class="number" id="statSS">0</div>
+                    <div class="label">SS</div>
+                </div>
             </div>
 
             <div id="proxyList" class="proxy-list"></div>
@@ -658,9 +625,13 @@
         };
 
         // ============ LocalStorage ============
+        let saveTimeout = null;
         function saveToLocalStorage() {
-            const text = document.getElementById('configInput').value;
-            if (text) localStorage.setItem('v2fl_config', text);
+            if (saveTimeout) clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                const text = document.getElementById('configInput').value;
+                if (text) localStorage.setItem('v2fl_config', text);
+            }, 300);
         }
 
         function loadFromLocalStorage() {
@@ -865,6 +836,52 @@
             }
         }
 
+        function parseSSLink(link) {
+            try {
+                if (!link.startsWith('ss://')) return null;
+
+                let encoded = link.replace('ss://', '');
+                const atIndex = encoded.indexOf('@');
+
+                if (atIndex === -1) {
+                    // Format: ss://base64(method:password)@server:port#name
+                    return null;
+                }
+
+                const beforeAt = encoded.substring(0, atIndex);
+                const afterAt = encoded.substring(atIndex + 1);
+
+                // Decode base64 part
+                let decoded;
+                try {
+                    let padding = 4 - beforeAt.length % 4;
+                    if (padding !== 4) beforeAt += '='.repeat(padding);
+                    decoded = atob(beforeAt);
+                } catch (e) {
+                    return null;
+                }
+
+                const [method, password] = decoded.split(':');
+                const urlParts = afterAt.split('#');
+                const serverPort = urlParts[0];
+                const name = urlParts[1] ? decodeURIComponent(urlParts[1]) : `SS-${serverPort.split(':')[0]}`;
+
+                const [server, port] = serverPort.split(':');
+
+                return {
+                    name: name,
+                    server: server,
+                    port: parseInt(port) || 443,
+                    type: 'ss',
+                    cipher: method,
+                    password: password,
+                    udp: true
+                };
+            } catch (e) {
+                return null;
+            }
+        }
+
         function parseConfigFile(text) {
             const proxies = [];
 
@@ -872,7 +889,7 @@
                 const config = JSON.parse(text);
                 if (config.outbounds) {
                     config.outbounds.forEach(outbound => {
-                        if (['vmess', 'vless', 'trojan'].includes(outbound.protocol)) {
+                        if (['vmess', 'vless', 'trojan', 'shadowsocks'].includes(outbound.protocol)) {
                             const proxy = convertOutboundToProxy(outbound);
                             if (proxy) proxies.push(proxy);
                         }
@@ -888,6 +905,7 @@
                 if (line.startsWith('vless://')) proxy = parseVlessLink(line);
                 else if (line.startsWith('vmess://')) proxy = parseVmessLink(line);
                 else if (line.startsWith('trojan://')) proxy = parseTrojanLink(line);
+                else if (line.startsWith('ss://')) proxy = parseSSLink(line);
                 if (proxy) proxies.push(proxy);
             });
 
@@ -925,6 +943,12 @@
                 proxy.server = servers.address || '';
                 proxy.port = servers.port || 0;
                 proxy.password = servers.password || '';
+            } else if (protocol === 'shadowsocks') {
+                const server = (settings.servers || [{}])[0];
+                proxy.server = server.address || '';
+                proxy.port = server.port || 0;
+                proxy.password = server.password || '';
+                proxy.cipher = server.method || 'aes-256-gcm';
             }
 
             const network = stream.network || 'tcp';
@@ -1021,11 +1045,13 @@
             const vless = proxies.filter(p => p.type === 'vless').length;
             const vmess = proxies.filter(p => p.type === 'vmess').length;
             const trojan = proxies.filter(p => p.type === 'trojan').length;
+            const ss = proxies.filter(p => p.type === 'ss' || p.type === 'shadowsocks').length;
 
             document.getElementById('statTotal').textContent = total;
             document.getElementById('statVless').textContent = vless;
             document.getElementById('statVmess').textContent = vmess;
             document.getElementById('statTrojan').textContent = trojan;
+            document.getElementById('statSS').textContent = ss;
         }
 
         // ============ Convert ============
@@ -1061,17 +1087,22 @@
                     updateStats(dedupedProxies);
 
                     const proxyList = document.getElementById('proxyList');
-                    proxyList.innerHTML = dedupedProxies.map((proxy, index) => {
-                        return `
-                            <div class="proxy-item">
-                                <span>${index + 1}. ${proxy.name}</span>
-                                <span>
-                                    <span class="type-badge type-${proxy.type}">${proxy.type.toUpperCase()}</span>
-                                    ${proxy.server}:${proxy.port}
-                                </span>
-                            </div>
+                    proxyList.innerHTML = '';
+
+                    const fragment = document.createDocumentFragment();
+                    dedupedProxies.forEach((proxy, index) => {
+                        const div = document.createElement('div');
+                        div.className = 'proxy-item';
+                        div.innerHTML = `
+                            <span>${index + 1}. ${proxy.name}</span>
+                            <span>
+                                <span class="type-badge type-${proxy.type}">${proxy.type.toUpperCase()}</span>
+                                ${proxy.server}:${proxy.port}
+                            </span>
                         `;
-                    }).join('');
+                        fragment.appendChild(div);
+                    });
+                    proxyList.appendChild(fragment);
 
                     document.getElementById('configPreview').classList.remove('show');
                     showPreview = false;
@@ -1114,6 +1145,21 @@
             }
         }
 
+        // ============ Copy Helper ============
+        function copyToClipboard(text, successMessage) {
+            navigator.clipboard.writeText(text).then(() => {
+                showMessage(successMessage, 'success');
+            }).catch(() => {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showMessage(successMessage, 'success');
+            });
+        }
+
         // ============ Copy ============
         function copyConfig() {
             if (!currentConfig) {
@@ -1123,18 +1169,7 @@
 
             try {
                 const yamlContent = jsyaml.dump(currentConfig, yamlOptions);
-
-                navigator.clipboard.writeText(yamlContent).then(() => {
-                    showMessage('✅ کانفیگ YAML در کلیپ‌بورد کپی شد', 'success');
-                }).catch(() => {
-                    const textarea = document.createElement('textarea');
-                    textarea.value = yamlContent;
-                    document.body.appendChild(textarea);
-                    textarea.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(textarea);
-                    showMessage('✅ کانفیگ YAML در کلیپ‌بورد کپی شد', 'success');
-                });
+                copyToClipboard(yamlContent, '✅ کانفیگ YAML در کلیپ‌بورد کپی شد');
             } catch (error) {
                 showError('خطا در کپی کردن', error.message);
             }
@@ -1148,18 +1183,7 @@
 
             try {
                 const jsonContent = JSON.stringify(currentConfig, null, 2);
-
-                navigator.clipboard.writeText(jsonContent).then(() => {
-                    showMessage('✅ کانفیگ JSON در کلیپ‌بورد کپی شد', 'success');
-                }).catch(() => {
-                    const textarea = document.createElement('textarea');
-                    textarea.value = jsonContent;
-                    document.body.appendChild(textarea);
-                    textarea.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(textarea);
-                    showMessage('✅ کانفیگ JSON در کلیپ‌بورد کپی شد', 'success');
-                });
+                copyToClipboard(jsonContent, '✅ کانفیگ JSON در کلیپ‌بورد کپی شد');
             } catch (error) {
                 showError('خطا در کپی کردن JSON', error.message);
             }
@@ -1188,30 +1212,6 @@
             }
         }
 
-        // ============ Keyboard Shortcuts ============
-        document.addEventListener('keydown', function(e) {
-            // Ctrl+Enter = Convert
-            if (e.ctrlKey && e.key === 'Enter') {
-                e.preventDefault();
-                convertConfig();
-            }
-            // Ctrl+Shift+D = Download
-            if (e.ctrlKey && e.shiftKey && e.key === 'D') {
-                e.preventDefault();
-                downloadConfig();
-            }
-            // Ctrl+Shift+C = Copy YAML
-            if (e.ctrlKey && e.shiftKey && e.key === 'C') {
-                e.preventDefault();
-                copyConfig();
-            }
-            // Ctrl+Shift+J = Copy JSON
-            if (e.ctrlKey && e.shiftKey && e.key === 'J') {
-                e.preventDefault();
-                copyAsJson();
-            }
-        });
-
         // ============ Auto Save ============
         document.getElementById('configInput').addEventListener('input', saveToLocalStorage);
 
@@ -1233,7 +1233,6 @@
             loadFromLocalStorage();
             loadYamlLibrary();
             console.log('🚀 V2TOClash loaded successfully');
-            console.log('💡 Shortcuts: Ctrl+Enter=Convert, Ctrl+Shift+D=Download, Ctrl+Shift+C=Copy YAML, Ctrl+Shift+J=Copy JSON');
         };
     </script>
 </body>
