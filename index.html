@@ -844,14 +844,12 @@
                 const atIndex = encoded.indexOf('@');
 
                 if (atIndex === -1) {
-                    // Format: ss://base64(method:password)@server:port#name
                     return null;
                 }
 
                 const beforeAt = encoded.substring(0, atIndex);
-                const afterAt = encoded.substring(atIndex + 1);
+                let afterAt = encoded.substring(atIndex + 1);
 
-                // Decode base64 part
                 let decoded;
                 try {
                     let padding = 4 - beforeAt.length % 4;
@@ -983,9 +981,20 @@
             return { proxies: renamedProxies, changes };
         }
 
+        // ============ محدود کردن پروکسی‌های تست ============
+        function limitTestProxies(proxyNames, maxCount = 15) {
+            return [...proxyNames].slice(0, maxCount);
+        }
+
         // ============ Generate Config ============
         function generateClashConfig(proxies) {
-            const proxyNames = proxies.map(p => p.name).filter(Boolean);
+            const allProxyNames = proxies.map(p => p.name).filter(Boolean);
+
+            // حداکثر ۱۵ تا برای تست خودکار
+            const testProxies = limitTestProxies(allProxyNames, 15);
+
+            // بقیه پروکسی‌ها برای انتخاب دستی
+            const remainingProxies = allProxyNames.filter(name => !testProxies.includes(name));
 
             const config = {
                 port: 7890,
@@ -1001,6 +1010,8 @@
                 secret: '',
                 'bind-address': '*',
                 'unified-delay': true,
+                'tcp-concurrent': true,
+                'global-client-fingerprint': 'chrome',
                 profile: {
                     'store-selected': true
                 },
@@ -1010,29 +1021,76 @@
                     'enhanced-mode': 'fake-ip',
                     'fake-ip-range': '198.18.0.1/16',
                     listen: '0.0.0.0:7874',
+                    'default-nameserver': [
+                        '178.22.122.100',
+                        '185.51.200.2'
+                    ],
                     nameserver: [
-                        'https://dns.google/dns-query',
-                        'https://cloudflare-dns.com/dns-query'
+                        'https://dns.shecan.ir/dns-query',
+                        'https://dns.403.online/dns-query',
+                        'https://free.shecan.ir/dns-query'
                     ],
                     fallback: [
                         'https://dns.google/dns-query',
-                        'https://cloudflare-dns.com/dns-query'
-                    ]
+                        'https://cloudflare-dns.com/dns-query',
+                        'https://dns.quad9.net/dns-query'
+                    ],
+                    'fallback-filter': {
+                        geoip: true,
+                        geoip-code: 'IR',
+                        ipcidr: [
+                            '240.0.0.0/4'
+                        ]
+                    }
                 },
                 proxies: proxies,
                 'proxy-groups': [
+                    // گروه تست سریع با حداکثر ۱۵ پروکسی
                     {
-                        name: 'Auto-Fallback',
-                        type: 'fallback',
-                        proxies: proxyNames,
+                        name: '🚀 Fast-Test',
+                        type: 'url-test',
+                        proxies: testProxies.length > 0 ? testProxies : allProxyNames.slice(0, 5),
                         url: 'http://www.gstatic.com/generate_204',
-                        interval: 120
+                        interval: 120,
+                        tolerance: 50,
+                        lazy: false
+                    },
+                    // گروه دستی برای بقیه پروکسی‌ها
+                    {
+                        name: '📦 All-Servers',
+                        type: 'select',
+                        proxies: ['🚀 Fast-Test', 'DIRECT', ...remainingProxies]
+                    },
+                    // گروه نهایی Fallback
+                    {
+                        name: '🔄 Auto-Fallback',
+                        type: 'fallback',
+                        proxies: ['🚀 Fast-Test', '📦 All-Servers'],
+                        url: 'http://www.gstatic.com/generate_204',
+                        interval: 90,
+                        lazy: false,
+                        'fallback-filter': {
+                            url: 'http://www.gstatic.com/generate_204',
+                            interval: 60,
+                            'lazy-filter': true
+                        }
                     }
                 ],
                 rules: [
+                    // سایت‌های ایرانی مستقیم
                     'DOMAIN-SUFFIX,ir,DIRECT',
+                    'DOMAIN-KEYWORD,ir,DIRECT',
                     'GEOIP,IR,DIRECT',
-                    'MATCH,Auto-Fallback'
+                    // سایت‌های فارسی‌زبان
+                    'DOMAIN-KEYWORD,shiraz,DIRECT',
+                    'DOMAIN-KEYWORD,tehran,DIRECT',
+                    // سایت‌های دولتی ایران
+                    'DOMAIN-SUFFIX,gov.ir,DIRECT',
+                    'DOMAIN-SUFFIX,ac.ir,DIRECT',
+                    // پروتکل‌های پرکاربرد
+                    'PROCESS-NAME,psi,DIRECT',
+                    // بقیه ترافیک
+                    'MATCH,🔄 Auto-Fallback'
                 ]
             };
 
@@ -1114,6 +1172,9 @@
                     if (changes.length > 0) {
                         message += ` | ${changes.length} تکراری تغییر نام یافت`;
                     }
+                    // اطلاع از تعداد پروکسی‌های تست
+                    const testCount = Math.min(15, dedupedProxies.length);
+                    message += ` | 🚀 ${testCount} پروکسی برای تست خودکار`;
                     showMessage(message, 'success');
 
                 } catch (error) {
