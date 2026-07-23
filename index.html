@@ -421,6 +421,30 @@
             display: block;
         }
 
+        .test-guide {
+            background: #f0fff4;
+            border: 1px solid #c6f6d5;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            font-size: 13px;
+            color: #22543d;
+        }
+
+        .test-guide h3 {
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .test-guide ol {
+            margin: 0;
+            padding-right: 20px;
+        }
+
+        .test-guide li {
+            margin-bottom: 5px;
+        }
+
         /* Loading Overlay */
         #loadingOverlay {
             display: none;
@@ -607,6 +631,19 @@
                 <button class="btn btn-preview" onclick="togglePreview()">👁️ پیش‌نمایش</button>
             </div>
 
+            <div id="testGuide" class="test-guide" style="display:none;">
+                <h3>راهنمای تست سرعت در FlClash</h3>
+                <ol>
+                    <li>فایل YAML رو دانلود کنید</li>
+                    <li>در FlClash ایمپورت کنید</li>
+                    <li>به تب Proxies برید</li>
+                    <li>روی گروه <strong>Fast-Test</strong> کلیک کنید</li>
+                    <li>صبر کنید تا تست تموم بشه (۱-۲ دقیقه)</li>
+                    <li>پروکسی با <span style="color:#48bb78">سبزترین رنگ</span> سریع‌ترین هست</li>
+                </ol>
+                <p style="font-size:12px;color:#718096;margin-top:10px;">💡 تست خودکار هر ۲ دقیقه تکرار می‌شه</p>
+            </div>
+
             <div id="configPreview" class="config-preview"></div>
         </div>
     </div>
@@ -619,7 +656,7 @@
 
         const yamlOptions = {
             indent: 2,
-            lineWidth: -1,
+            lineWidth: 80,
             noRefs: true,
             sortKeys: false
         };
@@ -981,7 +1018,7 @@
             return { proxies: renamedProxies, changes };
         }
 
-        // ============ محدود کردن پروکسی‌های تست ============
+        // ============ Test Proxy Limit ============
         function limitTestProxies(proxyNames, maxCount = 15) {
             return [...proxyNames].slice(0, maxCount);
         }
@@ -989,11 +1026,7 @@
         // ============ Generate Config ============
         function generateClashConfig(proxies) {
             const allProxyNames = proxies.map(p => p.name).filter(Boolean);
-
-            // حداکثر ۱۵ تا برای تست خودکار
             const testProxies = limitTestProxies(allProxyNames, 15);
-
-            // بقیه پروکسی‌ها برای انتخاب دستی
             const remainingProxies = allProxyNames.filter(name => !testProxies.includes(name));
 
             const config = {
@@ -1037,7 +1070,7 @@
                     ],
                     'fallback-filter': {
                         geoip: true,
-                        geoip-code: 'IR',
+                        'geoip-code': 'IR',
                         ipcidr: [
                             '240.0.0.0/4'
                         ]
@@ -1045,7 +1078,6 @@
                 },
                 proxies: proxies,
                 'proxy-groups': [
-                    // گروه تست سریع با حداکثر ۱۵ پروکسی
                     {
                         name: '🚀 Fast-Test',
                         type: 'url-test',
@@ -1055,13 +1087,11 @@
                         tolerance: 50,
                         lazy: false
                     },
-                    // گروه دستی برای بقیه پروکسی‌ها
                     {
                         name: '📦 All-Servers',
                         type: 'select',
                         proxies: ['🚀 Fast-Test', 'DIRECT', ...remainingProxies]
                     },
-                    // گروه نهایی Fallback
                     {
                         name: '🔄 Auto-Fallback',
                         type: 'fallback',
@@ -1077,19 +1107,14 @@
                     }
                 ],
                 rules: [
-                    // سایت‌های ایرانی مستقیم
                     'DOMAIN-SUFFIX,ir,DIRECT',
                     'DOMAIN-KEYWORD,ir,DIRECT',
                     'GEOIP,IR,DIRECT',
-                    // سایت‌های فارسی‌زبان
                     'DOMAIN-KEYWORD,shiraz,DIRECT',
                     'DOMAIN-KEYWORD,tehran,DIRECT',
-                    // سایت‌های دولتی ایران
                     'DOMAIN-SUFFIX,gov.ir,DIRECT',
                     'DOMAIN-SUFFIX,ac.ir,DIRECT',
-                    // پروتکل‌های پرکاربرد
                     'PROCESS-NAME,psi,DIRECT',
-                    // بقیه ترافیک
                     'MATCH,🔄 Auto-Fallback'
                 ]
             };
@@ -1171,7 +1196,6 @@
                     if (changes.length > 0) {
                         message += ` | ${changes.length} تکراری تغییر نام یافت`;
                     }
-                    // اطلاع از تعداد پروکسی‌های تست
                     const testCount = Math.min(15, dedupedProxies.length);
                     message += ` | 🚀 ${testCount} پروکسی برای تست خودکار`;
                     showMessage(message, 'success');
@@ -1257,14 +1281,18 @@
             }
 
             const preview = document.getElementById('configPreview');
+            const testGuide = document.getElementById('testGuide');
+
             if (showPreview) {
                 preview.classList.remove('show');
+                testGuide.style.display = 'none';
                 showPreview = false;
             } else {
                 try {
                     const yamlContent = jsyaml.dump(currentConfig, yamlOptions);
                     preview.textContent = yamlContent;
                     preview.classList.add('show');
+                    testGuide.style.display = 'block';
                     showPreview = true;
                 } catch (error) {
                     showError('خطا در نمایش پیش‌نمایش', error.message);
