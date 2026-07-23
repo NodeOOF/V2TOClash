@@ -23,6 +23,8 @@
 - **خروجی استاندارد**: تولید فایل YAML سازگار با FlClash و Clash
 - **مسیریابی خودکار**: سایت‌های ایرانی (.ir) به صورت خودکار مستقیم (DIRECT) می‌شوند
 - **حذف خودکار تکراری‌ها**: پروکسی‌های تکراری (بر اساس نام) به صورت خودکار تغییر نام داده می‌شوند
+- **تست خودکار سرعت کانفیگ در کلاینت**: انتخاب سریع‌ترین پروکسی به صورت خودکار
+- **DNS بهینه برای اینترنت ایران**: استفاده از DNS‌های ایرانی و Cloudflare
 - **پیش‌نمایش**: مشاهده کانفیگ تولید شده قبل از دانلود
 - **رابط کاربری فارسی**: طراحی کاملاً راست‌چین با پشتیبانی RTL
 - **واکنش‌گرا**: سازگار با تمام اندازه صفحه‌نمایش
@@ -76,6 +78,15 @@ python -m http.server 8000
 3. **کلیک روی دکمه تبدیل**: کانفیگ‌ها پردازش می‌شوند
 4. **دریافت خروجی**: دانلود YAML، کپی در کلیپ‌بورد، یا پیش‌نمایش
 
+### راهنمای تست سرعت
+
+1. فایل YAML رو دانلود کنید
+2. در FlClash ایمپورت کنید
+3. به تب Proxies برید
+4. روی گروه **Fast-Test** کلیک کنید
+5. صبر کنید تا تست تموم بشه (۱-۲ دقیقه)
+6. پروکسی با سبزترین رنگ سریع‌ترین هست
+
 ---
 
 ## 🏗️ معماری پروژه
@@ -98,6 +109,7 @@ V2TOClash/
 | `parseConfigFile()` | پردازش JSON و لینک‌های مختلط |
 | `convertOutboundToProxy()` | تبدیل outbounds V2Ray به فرمت Clash |
 | `removeDuplicates()` | حذف و تغییر نام پروکسی‌های تکراری |
+| `limitTestProxies()` | محدود کردن پروکسی‌های تست به ۱۵ عدد |
 | `generateClashConfig()` | تولید کانفیگ نهایی YAML |
 
 ---
@@ -112,19 +124,39 @@ port: 7890              # HTTP Proxy
 socks-port: 7891        # SOCKS5 Proxy
 mixed-port: 7893        # Mixed Proxy (HTTP + SOCKS5)
 
-# DNS
+# DNS بهینه برای ایران
 dns:
   enable: true
   enhanced-mode: fake-ip
+  default-nameserver:
+    - 178.22.122.100
+    - 185.51.200.2
   nameserver:
+    - https://cloudflare-dns.com/dns-query
+    - https://dns.google/dns-query
+    - https://dns.shecan.ir/dns-query
+  fallback:
     - https://dns.google/dns-query
     - https://cloudflare-dns.com/dns-query
+    - https://dns.quad9.net/dns-query
+
+# گروه‌های پروکسی
+proxy-groups:
+  - name: Fast-Test
+    type: url-test        # تست خودکار سرعت
+    interval: 120         # هر ۲ دقیقه
+
+  - name: All-Servers
+    type: select          # انتخاب دستی
+
+  - name: Auto-Fallback
+    type: fallback        # سوئیچ خودکار
 
 # قوانین مسیریابی
 rules:
-  - DOMAIN-SUFFIX,ir,DIRECT    # سایت‌های .ir مستقیم
-  - GEOIP,IR,DIRECT            # IP‌های ایران مستقیم
-  - MATCH,Auto-Fallback        # بقیه از پروکسی
+  - DOMAIN-SUFFIX,ir,DIRECT
+  - GEOIP,IR,DIRECT
+  - MATCH,Auto-Fallback
 ```
 
 ---
@@ -141,18 +173,23 @@ rules:
 | `allow-lan` | true | اتصال LAN |
 | `mode` | rule | حالت قوانین |
 | `log-level` | silent | بدون لاگ |
+| `tcp-concurrent` | true | اتصال همزمان TCP |
+| `global-client-fingerprint` | chrome | اثر انگشت Chrome |
 
 ### DNS
 
 - **Enhanced Mode**: `fake-ip` برای عملکرد بهتر
-- **Nameserver**: Google DNS و Cloudflare DNS
-- **Fake-IP Range**: `198.18.0.1/16`
+- **Default Nameserver**: DNS‌های ایرانی برای resolve اولیه
+- **Nameserver**: Cloudflare (اول) و Google و Shecan
+- **Fallback-filter**: تشخیص ترافیک ایرانی
 
 ### قوانین مسیریابی
 
 1. **سایت‌های ایرانی**: `DOMAIN-SUFFIX,ir` → `DIRECT`
-2. **IP‌های ایران**: `GEOIP,IR` → `DIRECT`
-3. **بقیه ترافیک**: `MATCH` → `Auto-Fallback` (پروکسی خودکار)
+2. **کلمات کلیدی**: `DOMAIN-KEYWORD,ir` → `DIRECT`
+3. **IP‌های ایران**: `GEOIP,IR` → `DIRECT`
+4. **سایت‌های دولتی**: `gov.ir`, `ac.ir` → `DIRECT`
+5. **بقیه ترافیک**: `MATCH` → `Auto-Fallback`
 
 ---
 
@@ -177,7 +214,7 @@ rules:
 
 ### Shadowsocks
 - رمز عبور
-- رمزنگاری:aes-256-gcm, chacha20-ietf-poly1305
+- رمزنگاری: aes-256-gcm, chacha20-ietf-poly1305
 - UDP
 
 ---
@@ -225,9 +262,9 @@ rules: [
 ```javascript
 dns: {
     nameserver: [
+        'https://cloudflare-dns.com/dns-query',
         'https://dns.google/dns-query',
-        'https://1.1.1.1/dns-query',
-        'https://dns.quad9.net/dns-query'
+        'https://dns.shecan.ir/dns-query'
     ]
 }
 ```
@@ -247,6 +284,9 @@ dns: {
 
 ### آیا می‌توانم خروجی را در Clash اندروید استفاده کنم؟
 بله. فایل YAML تولید شده با Clash، Clash Meta، و FlClash سازگار است.
+
+### چگونه سریع‌ترین پروکسی را پیدا کنم؟
+گروه `Fast-Test` به صورت خودکار هر ۲ دقیقه پروکسی‌ها رو تست می‌کنه و سریع‌ترین رو انتخاب می‌کنه.
 
 ---
 
