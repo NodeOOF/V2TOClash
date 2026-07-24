@@ -783,10 +783,8 @@
                 const url = new URL(link);
                 const params = new URLSearchParams(url.search);
 
-                const name = params.get('remarks') || `VLESS-${url.hostname}`;
-
                 return {
-                    name: decodeURIComponent(name),
+                    name: 't.me/hajali_o',
                     server: url.hostname,
                     port: parseInt(url.port) || 443,
                     type: 'vless',
@@ -819,7 +817,7 @@
                 const config = JSON.parse(decoded);
 
                 const proxy = {
-                    name: config.ps || 'VMess Server',
+                    name: 't.me/hajali_o',
                     server: config.add || '',
                     port: parseInt(config.port) || 0,
                     type: 'vmess',
@@ -858,7 +856,7 @@
                 const params = new URLSearchParams(url.search);
 
                 return {
-                    name: params.get('remarks') || `Trojan-${url.hostname}`,
+                    name: 't.me/hajali_o',
                     server: url.hostname,
                     port: parseInt(url.port) || 443,
                     type: 'trojan',
@@ -899,12 +897,11 @@
                 const [method, password] = decoded.split(':');
                 const urlParts = afterAt.split('#');
                 const serverPort = urlParts[0];
-                const name = urlParts[1] ? decodeURIComponent(urlParts[1]) : `SS-${serverPort.split(':')[0]}`;
 
                 const [server, port] = serverPort.split(':');
 
                 return {
-                    name: name,
+                    name: 't.me/hajali_o',
                     server: server,
                     port: parseInt(port) || 443,
                     type: 'ss',
@@ -953,7 +950,7 @@
             const stream = outbound.streamSettings || {};
 
             const proxy = {
-                name: outbound.tag || `${protocol.toUpperCase()} Server`,
+                name: 't.me/hajali_o',
                 type: protocol,
                 udp: true
             };
